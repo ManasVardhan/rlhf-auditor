@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="banner.png" alt="RLHF Auditor Banner" width="100%">
+</p>
+
 # RLHF Auditor: Measuring Hidden Biases in Reward Models
 
 A diagnostic framework for systematically probing RLHF reward models for latent biases that may compromise alignment quality.
