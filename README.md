@@ -1,82 +1,101 @@
-# RLHF Auditor -- Your Reward Model Is Lying to You
+# RLHF Auditor: Measuring Hidden Biases in Reward Models
 
-A systematic probe suite that exposes hidden biases in RLHF reward models. Because nobody audits the auditor.
+A diagnostic framework for systematically probing RLHF reward models for latent biases that may compromise alignment quality.
 
-## The Hook
+## Background
 
-"I built a lie detector for RLHF reward models. Every major model failed."
+Reinforcement Learning from Human Feedback (RLHF) has become the dominant paradigm for aligning large language models. However, the reward models at the core of this pipeline are rarely audited for systematic biases. Recent work has identified several pathologies: length bias, sycophancy, position effects, jailbreak susceptibility, social desirability bias, and formatting preferences.
 
-## Concept
+This project provides a reproducible probe suite to quantify these biases in any reward model.
 
-RLHF is the industry standard for alignment. But reward models have known pathologies:
+## Research Questions
 
-1. **Length bias** -- longer responses get higher scores regardless of quality
-2. **Sycophancy** -- models rate agreeable responses higher
-3. **Position bias** -- responses shown first/last get anchoring effects
-4. **Jailbreak susceptibility** -- can be tricked into rating harmful outputs highly
-5. **Social desirability** -- rates "polite" over "accurate"
-6. **Style bias** -- prefers certain formatting, markdown, bullet points
+1. How prevalent is length bias in production reward models?
+2. Do reward models exhibit sycophancy, preferring agreeable responses over accurate ones?
+3. Can reward models be manipulated via adversarial prompts to rate harmful outputs highly?
 
-This tool probes any reward model across all 6 dimensions and produces a "trust score."
+## Probe Dimensions
 
-## Stack
-
-- HuggingFace Transformers for reward model loading
-- OpenAI API for GPT-4 judge baseline
-- Streamlit for dashboard
-- Datasets library for benchmark construction
+| Probe | Target Bias | Method |
+|-------|-------------|--------|
+| Length Bias | Preferring longer responses regardless of quality | Same content at multiple lengths |
+| Sycophancy | Preferring agreeable over correct responses | Contrarian vs agreeable pairs |
+| Position Bias | Order effects in pairwise comparison | Swapped A/B presentation |
+| Jailbreak Susceptibility | Adversarial manipulation of scores | Crafted prompts that elicit praise |
+| Social Desirability | Preferring polite over accurate | Polite-but-wrong vs blunt-but-right |
+| Style Bias | Preferring certain formatting | Same content, different presentation |
 
 ## Architecture
 
 ```
 rlhf-auditor/
 ├── probes/              # One probe per bias dimension
-│   ├── length_bias.py   # Same response at different lengths
-│   ├── sycophancy.py    # Contrarian vs agreeable responses
-│   ├── position_bias.py # Swap A/B order, check consistency
-│   ├── jailbreak.py     # Adversarial prompts that elicit praise
-│   ├── desirability.py  # Polite but wrong vs blunt but right
-│   └── style_bias.py    # Same content, different formatting
+│   ├── length_bias.py
+│   ├── sycophancy.py
+│   ├── position_bias.py
+│   ├── jailbreak.py
+│   ├── desirability.py
+│   └── style_bias.py
 ├── models/              # Reward model loaders
-├── benchmark/           # Synthetic test cases + human validated set
-├── dashboard/             # Streamlit trust report
-└── reports/               # Generated audit PDFs
+├── benchmark/           # Synthetic and validated test cases
+├── dashboard/           # Trust report visualization
+└── reports/             # Generated audit outputs
 ```
 
-## How It Works
+## Usage
 
-1. **Load target reward model** (any HuggingFace model with a score head)
-2. **Run probe suite** (~1000 test pairs per probe, ~1 hour)
-3. **Compute bias scores** (0 = unbiased, 1 = completely biased)
-4. **Generate trust report** with radar chart, per-dimension breakdown, examples
-5. **Compare against GPT-4 judge** as reference standard
+```python
+from probe import RewardModelProbe
 
-## Output
+probe = RewardModelProbe("OpenAssistant/reward-model-deberta-v3-large")
+audit = probe.run_full_audit()
+
+print(f"Trust Score: {audit['trust_score']:.0f}/100")
+print(f"Verdict: {audit['overall_verdict']}")
+```
+
+## Output Format
 
 ```
-Reward Model Audit: anthropic/reward-model-deberta-v3-large-run2
-Date: 2026-06-04
+Reward Model Audit: [model_name]
+Date: [timestamp]
 
-TRUST SCORE: 34/100
+TRUST SCORE: [0-100]
 
 Bias Dimensions:
-- Length bias:        0.67  (CRITICAL -- 67% longer responses rated higher)
-- Sycophancy:         0.52  (HIGH -- rates agreeable +12% higher)
-- Position bias:      0.41  (HIGH -- first response anchored +8%)
-- Jailbreak suscept:  0.78  (CRITICAL -- adversarial prompts score 0.89)
-- Social desirability:0.33  (MODERATE)
-- Style bias:         0.55  (HIGH -- markdown responses +15%)
+- Length bias:        [correlation]  ([verdict])
+- Sycophancy:         [rate]         ([verdict])
+- Position bias:      [inconsistency] ([verdict])
+- Jailbreak suscept:  [adversarial_score] ([verdict])
+- Social desirability: [preference_delta] ([verdict])
+- Style bias:         [format_correlation] ([verdict])
 
-Recommendation: DO NOT USE for high-stakes decisions.
+Recommendation: [assessment]
 ```
 
-## Viral Mechanics
+## Dependencies
 
-- Auto-tweet audit results for popular models (with permission)
-- "Reward Model Leaderboard" updated weekly
-- "Hall of Shame" for most biased models
-- Community submissions: audit your own reward model
+```
+torch>=2.0.0
+transformers>=4.35.0
+streamlit
+```
+
+## Current Status
+
+Two probes implemented: length bias and sycophancy. The framework supports adding new probes modularly.
+
+## Citation
+
+```
+@software{rlhf_auditor_2026,
+  author = {Vardhan, Manas},
+  title = {RLHF Auditor: Measuring Hidden Biases in Reward Models},
+  year = {2026},
+  url = {https://github.com/ManasVardhan/rlhf-auditor}
+}
+```
 
 ## License
 
-MIT -- make reward models accountable.
+MIT
